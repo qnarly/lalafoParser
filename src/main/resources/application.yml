@@ -5,7 +5,8 @@ server:
   port: 9090
 
 lalafo:
-  url: https://lalafo.kg/
+  url: https://lalafo.kg/api/search/v3/feed/search?expand=url&per-page=40&sort_by=newest&page=
+
 
 
 

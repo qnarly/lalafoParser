@@ -6,9 +6,8 @@ import kg.lalafoparser.dto.ItemDto;
 import kg.lalafoparser.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -28,26 +27,58 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<ItemDto> getItems(Integer limit) {
         List<ItemDto> its = new ArrayList<>();
-        Integer page = 1;
+        int page = 1;
 
         while (its.size() < limit) {
             try {
-                String url = baseUrl + "?page=" + page;
-                Document doc = Jsoup.connect(url).get();
+                String url = baseUrl + page;
 
-                Element script = doc.getElementById("__NEXT_DATA__");
-                JsonNode root = objectMapper.readTree(script.html());
-                JsonNode items = root.get("props").get("pageProps").get("initialState").get("feed").get("items");
+                log.info("API request: {}", url);
 
-                for (JsonNode item : items) {
+                Connection.Response response = Jsoup.connect(url)
+                        .ignoreContentType(true)
+                        .ignoreHttpErrors(true)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                        .header("Accept", "application/json, text/plain, */*")
+                        .header("device", "pc")
+                        .header("country-id", "12")
+                        .header("language", "ru_RU")
+                        .header("user-hash", "6f6f9b09-96cf-488e-a2c5-5e4eac055154")
+                        .header("Referer", "https://lalafo.kg/kyrgyzstan/zapchasti-i-aksessuary/")
+                        .header("Origin", "https://lalafo.kg")
+                        .method(Connection.Method.GET)
+                        .timeout(10000)
+                        .execute();
+
+                if (response.statusCode() != 200) {
+                    log.error("API error! Code: {}, Body: {}", response.statusCode(), response.body());
+                    break;
+                }
+
+                JsonNode root = objectMapper.readTree(response.body());
+                JsonNode items = root.path("items");
+
+                if (items.isMissingNode() || items.isEmpty()) {
+                    log.info("API returned empty list {}", page);
+                    break;
+                }
+
+                for (JsonNode node : items) {
                     if (its.size() >= limit) break;
 
-                    its.add(mapToItemDto(item));
+                    if (!node.has("id")) continue;
+
+                    try {
+                        its.add(mapToItemDto(node));
+                    } catch (Exception e) {
+                        log.error("Mapping error: {}", e.getMessage());
+                    }
                 }
                 page++;
+                Thread.sleep(500);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Critical API error: {}", e.getMessage());
                 break;
             }
         }
@@ -55,16 +86,32 @@ public class ItemServiceImpl implements ItemService {
     }
 
     private ItemDto mapToItemDto(JsonNode node) {
-        String photo = node.get("images").get(0).get("original_url").asText();
+        String name = node.path("title").asText("Без названия");
+        String priceVal = node.path("price").asText("0");
+        String currency = node.path("currency").asText("KGS");
+        String price = priceVal.equals("0") ? "Договорная" : priceVal + " " + currency;
 
-        String city = node.get("city").asText();
+        String city = node.path("city").asText("Кыргызстан");
+        String createdAt = node.path("created_time").asText("Недавно");
+
+        String photoUrl = "https://placehold.co/400x300?text=No+Image";
+        JsonNode images = node.path("images");
+
+        if (images.isArray() && !images.isEmpty()) {
+            String urlVal = images.get(0).path("original_url").asText();
+            if (urlVal.startsWith("http")) {
+                photoUrl = urlVal;
+            } else if (!urlVal.isEmpty()) {
+                photoUrl = "https://img.lalafo.com/i/" + urlVal;
+            }
+        }
 
         return ItemDto.builder()
-                .name(node.get("title").asText())
-                .price(node.get("price").asText())
+                .name(name)
+                .price(price)
                 .city(city)
-                .photoUrl(photo)
-                .createdAt(node.get("created_time").asText())
+                .photoUrl(photoUrl)
+                .createdAt(createdAt)
                 .build();
     }
 }
