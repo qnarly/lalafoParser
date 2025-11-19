@@ -5,7 +5,7 @@ server:
   port: 9090
 
 lalafo:
-  url: https://lalafo.kg/api/search/v3/feed/search?expand=url&per-page=40&sort_by=newest&page=
+  url: https://lalafo.kg/api/search/v3/feed/search
 
 
 
@@ -13,13 +13,6 @@ lalafo:
 logging:
   level:
     root: info
-    org:
-      springframework:
-        security: error
-      hibernate:
-        stat: error
-        type: error
-    web: error
   pattern:
     file: '%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n'
   file:
