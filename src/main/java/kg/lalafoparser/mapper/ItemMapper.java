@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 @Component
 public class ItemMapper {
 
-    private static final ZoneId KG_ZONE = ZoneId.of("Asia/Bishkek");
+    private static final ZoneId KG_ZONE = ZoneId.of("UTC");
     private static final DateTimeFormatter CREATED_FMT =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
@@ -19,12 +19,21 @@ public class ItemMapper {
         String name = node.path("title").asText("Без названия");
         String city = node.path("city").asText("Кыргызстан");
 
-        long createdTs = node.path("created_time").asLong(0L);
+        long timestamp = node.path("sorting_date").asLong(0);
+
+        if (timestamp == 0) {
+            timestamp = node.path("updated_time").asLong(0);
+        }
+
+        if (timestamp == 0) {
+            timestamp = node.path("created_time").asLong(0);
+        }
+
         String createdAt;
-        if (createdTs == 0L) {
+        if (timestamp == 0) {
             createdAt = "Недавно";
         } else {
-            createdAt = Instant.ofEpochSecond(createdTs)
+            createdAt = Instant.ofEpochSecond(timestamp)
                     .atZone(KG_ZONE)
                     .format(CREATED_FMT);
         }
