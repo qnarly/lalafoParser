@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: lalafoParser
+server:
+  port: 8089
+
+
+
+logging:
+  level:
+    root: info
+    org:
+      springframework:
+        security: error
+      hibernate:
+        stat: error
+        type: error
+    sql: error
+    web: error
+  pattern:
+    file: '%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n'
+  file:
+    path: logs
