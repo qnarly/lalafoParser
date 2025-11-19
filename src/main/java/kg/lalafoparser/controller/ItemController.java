@@ -14,8 +14,7 @@ public class ItemController {
 
     @GetMapping("/test-result")
     public String getTestResultPage(Model model) {
-        var its = itemService.getItems(100);
-        model.addAttribute("items", its);
+        model.addAttribute("items", itemService.getItems(100));
         return "test-result";
     }
 }
